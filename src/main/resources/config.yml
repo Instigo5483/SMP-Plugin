@@ -1,0 +1,10 @@
+# Maximum number of homes a player may create. Set to -1 for no limit (default).
+max-homes: -1
+
+# How long (in seconds) a /tpa request stays pending before it auto-expires.
+tpa-request-timeout-seconds: 60
+
+# Player names allowed to use /itemgive without needing the smp.itemgive
+# permission node granted (players with that permission, or ops, can always use it).
+itemgive-allowed-players:
+  - Instigo_Gaming

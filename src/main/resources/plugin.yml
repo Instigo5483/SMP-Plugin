@@ -1,0 +1,81 @@
+name: SMPPlugin
+version: '1.0.0'
+main: com.smpplugin.core.SMPPlugin
+api-version: '1.21'
+author: SMP
+description: Warps, TPA and Homes for an SMP server
+
+commands:
+  warp:
+    description: Teleport to a named warp.
+    usage: /warp <name>
+    permission: smp.warp.use
+  warps:
+    description: List all available warps.
+    usage: /warps
+    permission: smp.warp.use
+  setwarp:
+    description: Create or overwrite a warp at your current location.
+    usage: /setwarp <name>
+    permission: smp.warp.set
+  delwarp:
+    description: Delete a warp.
+    usage: /delwarp <name>
+    permission: smp.warp.delete
+  tpa:
+    description: Request to teleport to another player.
+    usage: /tpa <player>
+    permission: smp.tpa.use
+  tpaaccept:
+    description: Accept a pending teleport request.
+    usage: /tpaaccept
+    permission: smp.tpa.use
+  tpadeny:
+    description: Deny a pending teleport request.
+    usage: /tpadeny
+    permission: smp.tpa.use
+  sethome:
+    description: Create or overwrite a home at your current location.
+    usage: /sethome [name]
+    permission: smp.home.set
+  home:
+    description: Teleport to one of your homes.
+    usage: /home [name]
+    permission: smp.home.use
+  delhome:
+    description: Delete one of your homes.
+    usage: /delhome <name>
+    permission: smp.home.delete
+  homes:
+    description: List all of your homes.
+    usage: /homes
+    permission: smp.home.use
+  itemgive:
+    description: Give an item to a player via the plugin's inventory API (not vanilla /give).
+    usage: /itemgive <player> <material> [amount]
+
+permissions:
+  smp.warp.use:
+    description: Allows teleporting to warps and listing them.
+    default: true
+  smp.warp.set:
+    description: Allows creating/overwriting warps.
+    default: op
+  smp.warp.delete:
+    description: Allows deleting warps.
+    default: op
+  smp.tpa.use:
+    description: Allows sending, accepting and denying teleport requests.
+    default: true
+  smp.home.set:
+    description: Allows creating/overwriting homes.
+    default: true
+  smp.home.use:
+    description: Allows teleporting to homes and listing them.
+    default: true
+  smp.home.delete:
+    description: Allows deleting homes.
+    default: true
+  smp.itemgive:
+    description: Allows giving items to players without needing operator status.
+    default: false
