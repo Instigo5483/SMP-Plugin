@@ -7,8 +7,8 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -18,19 +18,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Builds and opens the /itemgive category menu, item-list, search box, and quantity-picker inventories. */
+/**
+ * Builds and opens the /itemgive browse screen (a persistent row of category tabs,
+ * like creative mode, with a paginated item grid below), the quantity-picker, and
+ * the anvil-based search box.
+ */
 public final class ItemGiveMenu {
 
-    public static final int ITEMS_PER_PAGE = 45;
+    public static final int ITEMS_PER_PAGE = 36;
+    public static final int GRID_START_SLOT = 9;
     public static final int PREV_SLOT = 45;
-    public static final int BACK_SLOT = 48;
+    public static final int SEARCH_SLOT = 46;
     public static final int PAGE_INFO_SLOT = 49;
     public static final int CLOSE_SLOT = 50;
     public static final int NEXT_SLOT = 53;
-
-    public static final int CATEGORY_SEARCH_SLOT = 4;
-    public static final int CATEGORY_CLOSE_SLOT = 49;
-    public static final int[] CATEGORY_SLOTS = {11, 12, 13, 20, 21, 22, 29, 30, 31};
 
     public static final int QTY_MINUS_64 = 0;
     public static final int QTY_MINUS_10 = 1;
@@ -78,67 +79,8 @@ public final class ItemGiveMenu {
         return Math.max(1, (pool.size() + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE);
     }
 
-    public static void openCategoryMenu(Player viewer, UUID targetUuid, String targetName) {
-        CategoryMenuHolder holder = new CategoryMenuHolder(targetUuid, targetName);
-        Inventory inventory = Bukkit.createInventory(holder, 54,
-                Component.text("Give items to " + targetName, NamedTextColor.DARK_GRAY));
-        holder.setInventory(inventory);
-
-        ItemCategory[] categories = ItemCategory.values();
-        for (int i = 0; i < CATEGORY_SLOTS.length && i < categories.length; i++) {
-            inventory.setItem(CATEGORY_SLOTS[i], categoryIcon(categories[i]));
-        }
-
-        inventory.setItem(CATEGORY_SEARCH_SLOT, navIcon(Material.COMPASS, "Search"));
-        inventory.setItem(CATEGORY_CLOSE_SLOT, navIcon(Material.BARRIER, "Close"));
-
-        viewer.openInventory(inventory);
-    }
-
-    public static void openItemList(Player viewer, UUID targetUuid, String targetName, List<Material> pool,
-                                     String title, int page) {
-        int pages = pageCount(pool);
-        int clampedPage = Math.max(0, Math.min(page, pages - 1));
-
-        ItemMenuHolder holder = new ItemMenuHolder(targetUuid, targetName, pool, title, clampedPage);
-        Inventory inventory = Bukkit.createInventory(holder, 54, Component.text(title, NamedTextColor.DARK_GRAY));
-        holder.setInventory(inventory);
-
-        int start = clampedPage * ITEMS_PER_PAGE;
-        int end = Math.min(start + ITEMS_PER_PAGE, pool.size());
-        for (int i = start; i < end; i++) {
-            inventory.setItem(i - start, icon(pool.get(i)));
-        }
-
-        if (clampedPage > 0) {
-            inventory.setItem(PREV_SLOT, navIcon(Material.ARROW, "Previous Page"));
-        }
-        inventory.setItem(BACK_SLOT, navIcon(Material.ARROW, "Back to Categories"));
-        inventory.setItem(PAGE_INFO_SLOT, navIcon(Material.PAPER, "Page " + (clampedPage + 1) + " / " + pages));
-        inventory.setItem(CLOSE_SLOT, navIcon(Material.BARRIER, "Close"));
-        if (clampedPage < pages - 1) {
-            inventory.setItem(NEXT_SLOT, navIcon(Material.ARROW, "Next Page"));
-        }
-
-        viewer.openInventory(inventory);
-    }
-
-    public static void openSearch(Player viewer, UUID targetUuid, String targetName) {
-        SearchMenuHolder holder = new SearchMenuHolder(targetUuid, targetName);
-        Inventory inventory = Bukkit.createInventory(holder, InventoryType.ANVIL,
-                Component.text("Search items...", NamedTextColor.DARK_GRAY));
-        holder.setInventory(inventory);
-
-        ItemStack base = new ItemStack(Material.PAPER);
-        ItemMeta meta = base.getItemMeta();
-        if (meta != null) {
-            meta.displayName(Component.text("Type a search term", NamedTextColor.GRAY)
-                    .decoration(TextDecoration.ITALIC, false));
-            base.setItemMeta(meta);
-        }
-        inventory.setItem(0, base);
-
-        viewer.openInventory(inventory);
+    public static void openCategory(Player viewer, UUID targetUuid, String targetName, ItemCategory category, int page) {
+        openBrowse(viewer, targetUuid, targetName, materialsInCategory(category), category.label(), category, page);
     }
 
     public static void openSearchResults(Player viewer, UUID targetUuid, String targetName, String query) {
@@ -149,13 +91,70 @@ public final class ItemGiveMenu {
                 results.add(material);
             }
         }
-        openItemList(viewer, targetUuid, targetName, results, "Search: " + query, 0);
+        openBrowse(viewer, targetUuid, targetName, results, "Search: " + query, null, 0);
+    }
+
+    public static void openBrowse(Player viewer, UUID targetUuid, String targetName, List<Material> pool,
+                                   String title, ItemCategory activeCategory, int page) {
+        int pages = pageCount(pool);
+        int clampedPage = Math.max(0, Math.min(page, pages - 1));
+
+        BrowseMenuHolder holder = new BrowseMenuHolder(targetUuid, targetName, pool, title, activeCategory, clampedPage);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                Component.text("Give to " + targetName + ": " + title, NamedTextColor.DARK_GRAY));
+        holder.setInventory(inventory);
+
+        ItemCategory[] categories = ItemCategory.values();
+        for (int i = 0; i < categories.length; i++) {
+            inventory.setItem(i, tabIcon(categories[i], categories[i] == activeCategory));
+        }
+
+        int start = clampedPage * ITEMS_PER_PAGE;
+        int end = Math.min(start + ITEMS_PER_PAGE, pool.size());
+        for (int i = start; i < end; i++) {
+            inventory.setItem(GRID_START_SLOT + (i - start), icon(pool.get(i)));
+        }
+
+        if (clampedPage > 0) {
+            inventory.setItem(PREV_SLOT, navIcon(Material.ARROW, "Previous Page"));
+        }
+        inventory.setItem(SEARCH_SLOT, navIcon(Material.COMPASS, activeCategory == null ? "Search (active)" : "Search"));
+        inventory.setItem(PAGE_INFO_SLOT, navIcon(Material.PAPER, title + " - Page " + (clampedPage + 1) + " / " + pages));
+        inventory.setItem(CLOSE_SLOT, navIcon(Material.BARRIER, "Close"));
+        if (clampedPage < pages - 1) {
+            inventory.setItem(NEXT_SLOT, navIcon(Material.ARROW, "Next Page"));
+        }
+
+        viewer.openInventory(inventory);
+    }
+
+    /**
+     * Force-opens a real anvil menu (not a fake Bukkit.createInventory one, which never
+     * fires PrepareAnvilEvent) so the player can type a search term into the rename box.
+     */
+    @SuppressWarnings("deprecation")
+    public static boolean openSearch(Player viewer) {
+        InventoryView view = viewer.openAnvil(null, true);
+        if (view == null) {
+            return false;
+        }
+        Inventory inventory = view.getTopInventory();
+        ItemStack base = new ItemStack(Material.PAPER);
+        ItemMeta meta = base.getItemMeta();
+        if (meta != null) {
+            meta.displayName(Component.text("Type a search term", NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            base.setItemMeta(meta);
+        }
+        inventory.setItem(0, base);
+        return true;
     }
 
     public static void openQuantityPicker(Player viewer, UUID targetUuid, String targetName, Material material,
-                                           int amount, List<Material> returnPool, String returnTitle, int returnPage) {
+                                           int amount, List<Material> returnPool, String returnTitle,
+                                           ItemCategory returnCategory, int returnPage) {
         QuantityMenuHolder holder = new QuantityMenuHolder(targetUuid, targetName, material, amount,
-                returnPool, returnTitle, returnPage);
+                returnPool, returnTitle, returnCategory, returnPage);
         Inventory inventory = Bukkit.createInventory(holder, 27,
                 Component.text("Give " + displayName(material) + " to " + targetName, NamedTextColor.DARK_GRAY));
         holder.setInventory(inventory);
@@ -198,12 +197,15 @@ public final class ItemGiveMenu {
         };
     }
 
-    private static ItemStack categoryIcon(ItemCategory category) {
+    private static ItemStack tabIcon(ItemCategory category, boolean active) {
         ItemStack stack = new ItemStack(category.icon());
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.displayName(Component.text(category.label(), NamedTextColor.YELLOW)
-                    .decoration(TextDecoration.ITALIC, false));
+            NamedTextColor color = active ? NamedTextColor.GREEN : NamedTextColor.YELLOW;
+            String prefix = active ? "> " : "";
+            meta.displayName(Component.text(prefix + category.label(), color)
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, active));
             meta.lore(List.of(Component.text(materialsInCategory(category).size() + " items", NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false)));
             stack.setItemMeta(meta);

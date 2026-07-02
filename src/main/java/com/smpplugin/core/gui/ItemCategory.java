@@ -37,7 +37,8 @@ public enum ItemCategory {
         if (name.endsWith("_SPAWN_EGG")) {
             return SPAWN_EGGS;
         }
-        if (name.endsWith("_SWORD") || name.equals("BOW") || name.equals("CROSSBOW") || name.equals("TRIDENT")) {
+        if (name.endsWith("_SWORD") || name.equals("BOW") || name.equals("CROSSBOW") || name.equals("TRIDENT")
+                || name.equals("ARROW") || name.equals("SPECTRAL_ARROW") || name.equals("TIPPED_ARROW")) {
             return WEAPONS;
         }
         if (name.endsWith("_PICKAXE") || name.endsWith("_AXE") || name.endsWith("_SHOVEL") || name.endsWith("_HOE")

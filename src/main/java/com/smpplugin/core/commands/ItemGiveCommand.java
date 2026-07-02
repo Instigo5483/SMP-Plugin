@@ -1,5 +1,6 @@
 package com.smpplugin.core.commands;
 
+import com.smpplugin.core.gui.ItemCategory;
 import com.smpplugin.core.gui.ItemGiveMenu;
 import com.smpplugin.core.util.Messages;
 import org.bukkit.Bukkit;
@@ -76,7 +77,7 @@ public class ItemGiveCommand implements CommandExecutor, TabCompleter {
                 Messages.error(sender, "Console must specify a material: /" + label + " <player> <material> [amount]");
                 return true;
             }
-            ItemGiveMenu.openCategoryMenu(viewer, target.getUniqueId(), target.getName());
+            ItemGiveMenu.openCategory(viewer, target.getUniqueId(), target.getName(), ItemCategory.values()[0], 0);
             return true;
         }
 

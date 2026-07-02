@@ -7,36 +7,56 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class ItemGiveGuiListener implements Listener {
 
+    /** Keyed by viewer UUID: a force-opened anvil has no custom InventoryHolder to attach state to. */
+    private static final Map<UUID, SearchSession> ACTIVE_SEARCHES = new HashMap<>();
+
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
-        if (isOurs(event.getView().getTopInventory().getHolder())) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (isOurs(event.getView().getTopInventory().getHolder()) || ACTIVE_SEARCHES.containsKey(player.getUniqueId())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
+    public void onClose(InventoryCloseEvent event) {
+        if (event.getPlayer() instanceof Player player) {
+            ACTIVE_SEARCHES.remove(player.getUniqueId());
+        }
+    }
+
+    @EventHandler
     public void onPrepareAnvil(PrepareAnvilEvent event) {
-        if (!(event.getInventory().getHolder() instanceof SearchMenuHolder searchHolder)) {
+        HumanEntity player = event.getView().getPlayer();
+        SearchSession session = ACTIVE_SEARCHES.get(player.getUniqueId());
+        if (session == null) {
             return;
         }
-        event.getView().setRepairCost(0);
 
         String text = event.getView().getRenameText();
-        searchHolder.setPendingQuery(text == null ? "" : text);
+        session.setPendingQuery(text == null ? "" : text);
         boolean hasQuery = text != null && !text.isBlank();
 
         ItemStack result = new ItemStack(Material.COMPASS);
@@ -55,8 +75,16 @@ public class ItemGiveGuiListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player viewer)) {
+            return;
+        }
+
+        SearchSession searchSession = ACTIVE_SEARCHES.get(viewer.getUniqueId());
+        boolean isSearchAnvil = searchSession != null
+                && event.getView().getTopInventory().getType() == InventoryType.ANVIL;
         InventoryHolder holder = event.getView().getTopInventory().getHolder();
-        if (!isOurs(holder)) {
+
+        if (!isSearchAnvil && !isOurs(holder)) {
             return;
         }
         event.setCancelled(true);
@@ -64,85 +92,66 @@ public class ItemGiveGuiListener implements Listener {
         if (event.getClickedInventory() == null || event.getClickedInventory() != event.getView().getTopInventory()) {
             return;
         }
-        if (!(event.getWhoClicked() instanceof Player viewer)) {
-            return;
-        }
 
-        if (holder instanceof CategoryMenuHolder categoryHolder) {
-            handleCategoryMenuClick(viewer, categoryHolder, event.getSlot());
-        } else if (holder instanceof ItemMenuHolder menuHolder) {
-            handleItemMenuClick(viewer, menuHolder, event.getSlot());
+        if (isSearchAnvil) {
+            handleSearchClick(viewer, searchSession, event.getSlot());
+        } else if (holder instanceof BrowseMenuHolder browseHolder) {
+            handleBrowseClick(viewer, browseHolder, event.getSlot());
         } else if (holder instanceof QuantityMenuHolder quantityHolder) {
             handleQuantityMenuClick(viewer, quantityHolder, event.getSlot());
-        } else if (holder instanceof SearchMenuHolder searchHolder) {
-            handleSearchClick(viewer, searchHolder, event.getSlot());
         }
     }
 
     private boolean isOurs(InventoryHolder holder) {
-        return holder instanceof CategoryMenuHolder
-                || holder instanceof ItemMenuHolder
-                || holder instanceof QuantityMenuHolder
-                || holder instanceof SearchMenuHolder;
+        return holder instanceof BrowseMenuHolder || holder instanceof QuantityMenuHolder;
     }
 
-    private void handleCategoryMenuClick(Player viewer, CategoryMenuHolder holder, int slot) {
-        if (slot == ItemGiveMenu.CATEGORY_CLOSE_SLOT) {
-            viewer.closeInventory();
-            return;
-        }
-        if (slot == ItemGiveMenu.CATEGORY_SEARCH_SLOT) {
-            ItemGiveMenu.openSearch(viewer, holder.getTargetUuid(), holder.getTargetName());
-            return;
-        }
-        ItemCategory[] categories = ItemCategory.values();
-        int[] categorySlots = ItemGiveMenu.CATEGORY_SLOTS;
-        for (int i = 0; i < categorySlots.length && i < categories.length; i++) {
-            if (categorySlots[i] == slot) {
-                ItemCategory category = categories[i];
-                List<Material> pool = ItemGiveMenu.materialsInCategory(category);
-                ItemGiveMenu.openItemList(viewer, holder.getTargetUuid(), holder.getTargetName(), pool, category.label(), 0);
-                return;
-            }
-        }
-    }
-
-    private void handleItemMenuClick(Player viewer, ItemMenuHolder holder, int slot) {
+    private void handleBrowseClick(Player viewer, BrowseMenuHolder holder, int slot) {
         if (slot == ItemGiveMenu.CLOSE_SLOT) {
             viewer.closeInventory();
             return;
         }
-        if (slot == ItemGiveMenu.BACK_SLOT) {
-            ItemGiveMenu.openCategoryMenu(viewer, holder.getTargetUuid(), holder.getTargetName());
+        if (slot == ItemGiveMenu.SEARCH_SLOT) {
+            SearchSession session = new SearchSession(holder.getTargetUuid(), holder.getTargetName());
+            if (ItemGiveMenu.openSearch(viewer)) {
+                ACTIVE_SEARCHES.put(viewer.getUniqueId(), session);
+            } else {
+                Messages.error(viewer, "Could not open the search box.");
+            }
             return;
         }
         if (slot == ItemGiveMenu.PREV_SLOT) {
-            ItemGiveMenu.openItemList(viewer, holder.getTargetUuid(), holder.getTargetName(),
-                    holder.getPool(), holder.getTitle(), holder.getPage() - 1);
+            ItemGiveMenu.openBrowse(viewer, holder.getTargetUuid(), holder.getTargetName(),
+                    holder.getPool(), holder.getTitle(), holder.getActiveCategory(), holder.getPage() - 1);
             return;
         }
         if (slot == ItemGiveMenu.NEXT_SLOT) {
-            ItemGiveMenu.openItemList(viewer, holder.getTargetUuid(), holder.getTargetName(),
-                    holder.getPool(), holder.getTitle(), holder.getPage() + 1);
+            ItemGiveMenu.openBrowse(viewer, holder.getTargetUuid(), holder.getTargetName(),
+                    holder.getPool(), holder.getTitle(), holder.getActiveCategory(), holder.getPage() + 1);
             return;
         }
-        if (slot < 0 || slot >= ItemGiveMenu.ITEMS_PER_PAGE) {
+        ItemCategory[] categories = ItemCategory.values();
+        if (slot >= 0 && slot < categories.length) {
+            ItemGiveMenu.openCategory(viewer, holder.getTargetUuid(), holder.getTargetName(), categories[slot], 0);
             return;
         }
-        int index = holder.getPage() * ItemGiveMenu.ITEMS_PER_PAGE + slot;
+        if (slot < ItemGiveMenu.GRID_START_SLOT || slot >= ItemGiveMenu.GRID_START_SLOT + ItemGiveMenu.ITEMS_PER_PAGE) {
+            return;
+        }
+        int index = holder.getPage() * ItemGiveMenu.ITEMS_PER_PAGE + (slot - ItemGiveMenu.GRID_START_SLOT);
         List<Material> pool = holder.getPool();
         if (index >= pool.size()) {
             return;
         }
         Material material = pool.get(index);
         ItemGiveMenu.openQuantityPicker(viewer, holder.getTargetUuid(), holder.getTargetName(), material, 1,
-                pool, holder.getTitle(), holder.getPage());
+                pool, holder.getTitle(), holder.getActiveCategory(), holder.getPage());
     }
 
     private void handleQuantityMenuClick(Player viewer, QuantityMenuHolder holder, int slot) {
         if (slot == ItemGiveMenu.QTY_BACK) {
-            ItemGiveMenu.openItemList(viewer, holder.getTargetUuid(), holder.getTargetName(),
-                    holder.getReturnPool(), holder.getReturnTitle(), holder.getReturnPage());
+            ItemGiveMenu.openBrowse(viewer, holder.getTargetUuid(), holder.getTargetName(),
+                    holder.getReturnPool(), holder.getReturnTitle(), holder.getReturnCategory(), holder.getReturnPage());
             return;
         }
         if (slot == ItemGiveMenu.QTY_GIVE) {
@@ -153,8 +162,8 @@ public class ItemGiveGuiListener implements Listener {
                 return;
             }
             ItemGiveCommand.giveItem(viewer, target, holder.getMaterial(), holder.getAmount());
-            ItemGiveMenu.openItemList(viewer, holder.getTargetUuid(), holder.getTargetName(),
-                    holder.getReturnPool(), holder.getReturnTitle(), holder.getReturnPage());
+            ItemGiveMenu.openBrowse(viewer, holder.getTargetUuid(), holder.getTargetName(),
+                    holder.getReturnPool(), holder.getReturnTitle(), holder.getReturnCategory(), holder.getReturnPage());
             return;
         }
         int adjust = ItemGiveMenu.amountAdjustFor(slot);
@@ -166,15 +175,16 @@ public class ItemGiveGuiListener implements Listener {
         ItemGiveMenu.renderPreview(holder.getInventory(), holder.getMaterial(), newAmount);
     }
 
-    private void handleSearchClick(Player viewer, SearchMenuHolder holder, int slot) {
+    private void handleSearchClick(Player viewer, SearchSession session, int slot) {
         if (slot != ItemGiveMenu.SEARCH_RESULT_SLOT) {
             return;
         }
-        String query = holder.getPendingQuery();
+        String query = session.getPendingQuery();
         if (query == null || query.isBlank()) {
             Messages.error(viewer, "Type something to search for first.");
             return;
         }
-        ItemGiveMenu.openSearchResults(viewer, holder.getTargetUuid(), holder.getTargetName(), query);
+        ACTIVE_SEARCHES.remove(viewer.getUniqueId());
+        ItemGiveMenu.openSearchResults(viewer, session.getTargetUuid(), session.getTargetName(), query);
     }
 }

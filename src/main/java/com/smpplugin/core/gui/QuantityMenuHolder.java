@@ -7,7 +7,7 @@ import org.bukkit.inventory.InventoryHolder;
 import java.util.List;
 import java.util.UUID;
 
-/** Identifies an open quantity-picker inventory: material, current amount, and which item list to return to. */
+/** Identifies an open quantity-picker inventory: material, current amount, and which browse view to return to. */
 public class QuantityMenuHolder implements InventoryHolder {
 
     private final UUID targetUuid;
@@ -15,18 +15,21 @@ public class QuantityMenuHolder implements InventoryHolder {
     private final Material material;
     private final List<Material> returnPool;
     private final String returnTitle;
+    private final ItemCategory returnCategory;
     private final int returnPage;
     private int amount;
     private Inventory inventory;
 
     public QuantityMenuHolder(UUID targetUuid, String targetName, Material material, int amount,
-                               List<Material> returnPool, String returnTitle, int returnPage) {
+                               List<Material> returnPool, String returnTitle, ItemCategory returnCategory,
+                               int returnPage) {
         this.targetUuid = targetUuid;
         this.targetName = targetName;
         this.material = material;
         this.amount = amount;
         this.returnPool = returnPool;
         this.returnTitle = returnTitle;
+        this.returnCategory = returnCategory;
         this.returnPage = returnPage;
     }
 
@@ -57,6 +60,10 @@ public class QuantityMenuHolder implements InventoryHolder {
 
     public String getReturnTitle() {
         return returnTitle;
+    }
+
+    public ItemCategory getReturnCategory() {
+        return returnCategory;
     }
 
     public int getReturnPage() {

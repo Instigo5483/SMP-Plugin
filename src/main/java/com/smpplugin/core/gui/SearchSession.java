@@ -1,30 +1,21 @@
 package com.smpplugin.core.gui;
 
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-
 import java.util.UUID;
 
-/** Identifies the anvil-based search box; tracks the currently typed rename text. */
-public class SearchMenuHolder implements InventoryHolder {
+/**
+ * Tracks an in-progress /itemgive search for one viewer.
+ * A force-opened anvil (Player#openAnvil) has no custom InventoryHolder to attach
+ * state to, so ItemGiveGuiListener keys these by viewer UUID instead.
+ */
+public class SearchSession {
 
     private final UUID targetUuid;
     private final String targetName;
     private String pendingQuery = "";
-    private Inventory inventory;
 
-    public SearchMenuHolder(UUID targetUuid, String targetName) {
+    public SearchSession(UUID targetUuid, String targetName) {
         this.targetUuid = targetUuid;
         this.targetName = targetName;
-    }
-
-    void setInventory(Inventory inventory) {
-        this.inventory = inventory;
-    }
-
-    @Override
-    public Inventory getInventory() {
-        return inventory;
     }
 
     public UUID getTargetUuid() {
