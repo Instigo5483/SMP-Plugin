@@ -1,13 +1,13 @@
 # SMP Plugin
 
-A lightweight Paper/Spigot plugin adding warps, player-to-player teleport requests, and per-player homes.
+A lightweight Paper/Spigot plugin adding warps, player-to-player teleport requests, per-player homes, and a GUI item-give tool.
 
 **Built for small SMP servers** (the kind you run for yourself and a handful of friends) — it favors simple YAML storage and sane defaults over the configuration surface of a large public-server plugin.
 
 ## Requirements
 
 - Minecraft 1.21.x (Paper or Spigot)
-- Java 21
+- Java 25
 - Maven (for building from source)
 
 ## Building
@@ -35,11 +35,13 @@ The compiled jar is written to `target/SMPPlugin-1.0.0.jar`. Drop it into your s
 | `/home [name]` | Teleport to a home | `smp.home.use` | everyone |
 | `/delhome [name]` | Delete a home | `smp.home.delete` | everyone |
 | `/homes` | List your homes (clickable) | `smp.home.use` | everyone |
-| `/itemgive <player> <material> [amount]` | Give an item via the plugin's inventory API | `smp.itemgive` | op (see below) |
+| `/itemgive <player> [material] [amount]` | Give an item via the plugin's inventory API, or open a GUI picker | `smp.itemgive` | op (see below) |
 
 Teleport requests from `/tpa` arrive as a chat message with clickable **[Accept]**/**[Deny]** buttons; warp and home listings are clickable too.
 
 `/itemgive` is available to anyone with `smp.itemgive`, plus any player name listed under `itemgive-allowed-players` in `config.yml` — useful for letting a specific trusted player use it without granting them full server-operator status. It calls the Bukkit inventory API directly rather than dispatching vanilla `/give`.
+
+Running `/itemgive <player>` with just a name (no material) opens a GUI: a paginated list of every item, click one to open a quantity picker (±1/±10/±64 buttons with a live preview), then **Give** hands the items over and drops you back at the item list so you can keep picking more without retyping the command. Console senders must use the full `/itemgive <player> <material> [amount]` form since there's no inventory to open a GUI in.
 
 ## Configuration (`config.yml`)
 
