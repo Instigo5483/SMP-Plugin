@@ -15,6 +15,7 @@ import com.smpplugin.core.commands.WarpListCommand;
 import com.smpplugin.core.data.HomeManager;
 import com.smpplugin.core.data.TpaManager;
 import com.smpplugin.core.data.WarpManager;
+import com.smpplugin.core.gui.ItemGiveGuiListener;
 import com.smpplugin.core.listeners.PlayerQuitListener;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
@@ -58,6 +59,7 @@ public final class SMPPlugin extends JavaPlugin {
         register("itemgive", itemGiveCommand, itemGiveCommand);
 
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(tpaManager), this);
+        getServer().getPluginManager().registerEvents(new ItemGiveGuiListener(), this);
     }
 
     private void register(String name, CommandExecutor executor, TabCompleter completer) {

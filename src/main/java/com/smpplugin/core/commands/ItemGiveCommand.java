@@ -1,5 +1,6 @@
 package com.smpplugin.core.commands;
 
+import com.smpplugin.core.gui.ItemGiveMenu;
 import com.smpplugin.core.util.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -23,10 +24,13 @@ import java.util.stream.Collectors;
  * (ops always have it), plus any player name listed under itemgive-allowed-players
  * in config.yml. That allow-list check happens here rather than via plugin.yml's
  * command permission field, since the two checks are OR'd together.
+ *
+ * With just a target name ("/itemgive <player>"), a Player sender gets a GUI
+ * item/quantity picker instead of needing to type the material and amount.
  */
 public class ItemGiveCommand implements CommandExecutor, TabCompleter {
 
-    private static final int MAX_AMOUNT = 6400;
+    public static final int MAX_AMOUNT = 6400;
     private static final String PERMISSION = "smp.itemgive";
 
     private final JavaPlugin plugin;
@@ -56,14 +60,23 @@ public class ItemGiveCommand implements CommandExecutor, TabCompleter {
             Messages.error(sender, "You don't have permission to use this command.");
             return true;
         }
-        if (args.length < 2 || args.length > 3) {
-            Messages.error(sender, "Usage: /" + label + " <player> <material> [amount]");
+        if (args.length < 1 || args.length > 3) {
+            Messages.error(sender, "Usage: /" + label + " <player> [material] [amount]");
             return true;
         }
 
         Player target = Bukkit.getPlayerExact(args[0]);
         if (target == null) {
             Messages.error(sender, "Player '" + args[0] + "' is not online.");
+            return true;
+        }
+
+        if (args.length == 1) {
+            if (!(sender instanceof Player viewer)) {
+                Messages.error(sender, "Console must specify a material: /" + label + " <player> <material> [amount]");
+                return true;
+            }
+            ItemGiveMenu.openItemList(viewer, target.getUniqueId(), target.getName(), 0);
             return true;
         }
 
@@ -91,6 +104,12 @@ public class ItemGiveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        giveItem(sender, target, material, amount);
+        return true;
+    }
+
+    /** Shared by the direct-command path and the GUI's "Give" button. */
+    public static void giveItem(CommandSender sender, Player target, Material material, int amount) {
         ItemStack stack = new ItemStack(material, amount);
         Map<Integer, ItemStack> leftover = target.getInventory().addItem(stack);
         for (ItemStack remaining : leftover.values()) {
@@ -101,7 +120,6 @@ public class ItemGiveCommand implements CommandExecutor, TabCompleter {
         if (!target.equals(sender)) {
             Messages.info(target, "You received " + amount + " x " + material.name() + ".");
         }
-        return true;
     }
 
     @Override

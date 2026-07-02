@@ -52,7 +52,7 @@ commands:
     permission: smp.home.use
   itemgive:
     description: Give an item to a player via the plugin's inventory API (not vanilla /give).
-    usage: /itemgive <player> <material> [amount]
+    usage: /itemgive <player> [material] [amount] (omit material/amount to open a GUI picker)
 
 permissions:
   smp.warp.use:
