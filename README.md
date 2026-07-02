@@ -7,7 +7,7 @@ A lightweight Paper/Spigot plugin adding warps, player-to-player teleport reques
 ## Requirements
 
 - Minecraft 1.21.x (Paper or Spigot)
-- Java 21
+- Java 25
 - Maven (for building from source)
 
 ## Building
