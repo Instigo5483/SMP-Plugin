@@ -76,7 +76,7 @@ public class ItemGiveCommand implements CommandExecutor, TabCompleter {
                 Messages.error(sender, "Console must specify a material: /" + label + " <player> <material> [amount]");
                 return true;
             }
-            ItemGiveMenu.openItemList(viewer, target.getUniqueId(), target.getName(), 0);
+            ItemGiveMenu.openCategoryMenu(viewer, target.getUniqueId(), target.getName());
             return true;
         }
 

@@ -41,7 +41,24 @@ Teleport requests from `/tpa` arrive as a chat message with clickable **[Accept]
 
 `/itemgive` is available to anyone with `smp.itemgive`, plus any player name listed under `itemgive-allowed-players` in `config.yml` — useful for letting a specific trusted player use it without granting them full server-operator status. It calls the Bukkit inventory API directly rather than dispatching vanilla `/give`.
 
-Running `/itemgive <player>` with just a name (no material) opens a GUI: a paginated list of every item, click one to open a quantity picker (±1/±10/±64 buttons with a live preview), then **Give** hands the items over and drops you back at the item list so you can keep picking more without retyping the command. Console senders must use the full `/itemgive <player> <material> [amount]` form since there's no inventory to open a GUI in.
+Running `/itemgive <player>` with just a name (no material) opens a GUI, starting at a category menu (Tools, Weapons, Armor, Redstone, Brewing, Food, Spawn Eggs, Blocks, Miscellaneous) plus a **Search** button. Search opens an anvil-style text box — type a term and click the result to jump to matching items. Picking a category or search result opens a paginated item list; clicking an item opens a quantity picker (±1/±10/±64 buttons with a live preview), and **Give** hands the items over and drops you back at that same list so you can keep picking more without retyping the command. Console senders must use the full `/itemgive <player> <material> [amount]` form since there's no inventory to open a GUI in.
+
+## Project Structure
+
+```
+src/main/java/com/smpplugin/core/
+  SMPPlugin.java     JavaPlugin entry point — wires managers, commands, and listeners
+  commands/          One CommandExecutor (+ TabCompleter where useful) per command
+  data/              Persistence: WarpManager, HomeManager, TpaManager
+  gui/               /itemgive's inventory GUI (category menu, item list, quantity
+                     picker, anvil-based search) — see ItemGiveMenu.java for the
+                     entry points and ItemGiveGuiListener.java for click handling
+  listeners/         Bukkit event listeners (e.g. clearing stale /tpa requests on quit)
+  util/              Shared helpers: Messages (chat output), LocationUtil (YAML <-> Location)
+src/main/resources/
+  plugin.yml         Command + permission declarations
+  config.yml         Default settings (copied to plugins/SMPPlugin/ on first run)
+```
 
 ## Configuration (`config.yml`)
 
