@@ -59,7 +59,7 @@ public final class SMPPlugin extends JavaPlugin {
         register("itemgive", itemGiveCommand, itemGiveCommand);
 
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(tpaManager), this);
-        getServer().getPluginManager().registerEvents(new ItemGiveGuiListener(), this);
+        getServer().getPluginManager().registerEvents(new ItemGiveGuiListener(this), this);
     }
 
     private void register(String name, CommandExecutor executor, TabCompleter completer) {

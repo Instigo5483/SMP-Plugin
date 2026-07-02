@@ -18,7 +18,9 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +32,12 @@ public class ItemGiveGuiListener implements Listener {
     /** Keyed by viewer UUID: a force-opened anvil has no custom InventoryHolder to attach state to. */
     private static final Map<UUID, SearchSession> ACTIVE_SEARCHES = new HashMap<>();
 
+    private final JavaPlugin plugin;
+
+    public ItemGiveGuiListener(JavaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
@@ -40,10 +48,34 @@ public class ItemGiveGuiListener implements Listener {
         }
     }
 
+    /**
+     * Vanilla anvils hand back whatever's sitting in the input slots when the menu closes
+     * (that's how AnvilMenu works even for real anvils, not something we can prevent client-side).
+     * The search box's placeholder paper always ends up in that slot, so it gets "returned" to
+     * the player on close unless we clean it up ourselves. Runs a tick later since that return
+     * happens as part of the same close, before our own close handling can race it.
+     */
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
-        if (event.getPlayer() instanceof Player player) {
-            ACTIVE_SEARCHES.remove(player.getUniqueId());
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        SearchSession session = ACTIVE_SEARCHES.remove(player.getUniqueId());
+        if (session == null || session.getPlaceholder() == null) {
+            return;
+        }
+        ItemStack placeholder = session.getPlaceholder();
+        Bukkit.getScheduler().runTask(plugin, () -> removeMatching(player, placeholder));
+    }
+
+    private void removeMatching(Player player, ItemStack placeholder) {
+        PlayerInventory inventory = player.getInventory();
+        ItemStack[] contents = inventory.getContents();
+        for (int i = 0; i < contents.length; i++) {
+            if (placeholder.isSimilar(contents[i])) {
+                inventory.setItem(i, null);
+                return;
+            }
         }
     }
 
@@ -112,12 +144,14 @@ public class ItemGiveGuiListener implements Listener {
             return;
         }
         if (slot == ItemGiveMenu.SEARCH_SLOT) {
-            SearchSession session = new SearchSession(holder.getTargetUuid(), holder.getTargetName());
-            if (ItemGiveMenu.openSearch(viewer)) {
-                ACTIVE_SEARCHES.put(viewer.getUniqueId(), session);
-            } else {
+            ItemStack placeholder = ItemGiveMenu.openSearch(viewer);
+            if (placeholder == null) {
                 Messages.error(viewer, "Could not open the search box.");
+                return;
             }
+            SearchSession session = new SearchSession(holder.getTargetUuid(), holder.getTargetName());
+            session.setPlaceholder(placeholder);
+            ACTIVE_SEARCHES.put(viewer.getUniqueId(), session);
             return;
         }
         if (slot == ItemGiveMenu.PREV_SLOT) {
@@ -185,6 +219,7 @@ public class ItemGiveGuiListener implements Listener {
             return;
         }
         ACTIVE_SEARCHES.remove(viewer.getUniqueId());
+        viewer.getOpenInventory().getTopInventory().setItem(0, null);
         ItemGiveMenu.openSearchResults(viewer, session.getTargetUuid(), session.getTargetName(), query);
     }
 }

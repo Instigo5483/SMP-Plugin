@@ -133,10 +133,10 @@ public final class ItemGiveMenu {
      * fires PrepareAnvilEvent) so the player can type a search term into the rename box.
      */
     @SuppressWarnings("deprecation")
-    public static boolean openSearch(Player viewer) {
+    public static ItemStack openSearch(Player viewer) {
         InventoryView view = viewer.openAnvil(null, true);
         if (view == null) {
-            return false;
+            return null;
         }
         Inventory inventory = view.getTopInventory();
         ItemStack base = new ItemStack(Material.PAPER);
@@ -147,7 +147,7 @@ public final class ItemGiveMenu {
             base.setItemMeta(meta);
         }
         inventory.setItem(0, base);
-        return true;
+        return base;
     }
 
     public static void openQuantityPicker(Player viewer, UUID targetUuid, String targetName, Material material,
