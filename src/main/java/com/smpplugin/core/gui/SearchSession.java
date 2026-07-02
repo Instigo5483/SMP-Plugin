@@ -1,5 +1,7 @@
 package com.smpplugin.core.gui;
 
+import org.bukkit.inventory.ItemStack;
+
 import java.util.UUID;
 
 /**
@@ -12,6 +14,7 @@ public class SearchSession {
     private final UUID targetUuid;
     private final String targetName;
     private String pendingQuery = "";
+    private ItemStack placeholder;
 
     public SearchSession(UUID targetUuid, String targetName) {
         this.targetUuid = targetUuid;
@@ -32,5 +35,14 @@ public class SearchSession {
 
     public void setPendingQuery(String pendingQuery) {
         this.pendingQuery = pendingQuery;
+    }
+
+    /** The dummy paper placed in the anvil's input slot so the rename box is interactive. */
+    public ItemStack getPlaceholder() {
+        return placeholder;
+    }
+
+    public void setPlaceholder(ItemStack placeholder) {
+        this.placeholder = placeholder;
     }
 }
