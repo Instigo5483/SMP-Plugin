@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.png" alt="SMP Plugin icon" width="96" height="96">
+</p>
+
 # SMP Plugin
 
 A lightweight Paper/Spigot plugin adding warps, player-to-player teleport requests, per-player homes, and a GUI item-give tool.
