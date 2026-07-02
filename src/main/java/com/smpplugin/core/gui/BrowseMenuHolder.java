@@ -7,21 +7,28 @@ import org.bukkit.inventory.InventoryHolder;
 import java.util.List;
 import java.util.UUID;
 
-/** Identifies an open paginated item-list inventory: which pool of materials, title, and page. */
-public class ItemMenuHolder implements InventoryHolder {
+/**
+ * Identifies the /itemgive browse screen: a persistent row of category tabs (like
+ * creative mode) plus a paginated grid below for the active category or search result.
+ * activeCategory is null when the pool being shown is a search result rather than a category.
+ */
+public class BrowseMenuHolder implements InventoryHolder {
 
     private final UUID targetUuid;
     private final String targetName;
     private final List<Material> pool;
     private final String title;
+    private final ItemCategory activeCategory;
     private final int page;
     private Inventory inventory;
 
-    public ItemMenuHolder(UUID targetUuid, String targetName, List<Material> pool, String title, int page) {
+    public BrowseMenuHolder(UUID targetUuid, String targetName, List<Material> pool, String title,
+                             ItemCategory activeCategory, int page) {
         this.targetUuid = targetUuid;
         this.targetName = targetName;
         this.pool = pool;
         this.title = title;
+        this.activeCategory = activeCategory;
         this.page = page;
     }
 
@@ -48,6 +55,10 @@ public class ItemMenuHolder implements InventoryHolder {
 
     public String getTitle() {
         return title;
+    }
+
+    public ItemCategory getActiveCategory() {
+        return activeCategory;
     }
 
     public int getPage() {
